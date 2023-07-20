@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset='utf-8'>
+    <meta http-equiv='X-UA-Compatible' content='IE=edge'>
+    <title>Sorting Visualizer</title>
+    <meta name='viewport' content='width=device-width, initial-scale=1'>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz"
+        crossorigin="anonymous"></script>
+</head>
+
+<body data-bs-theme="dark">
+    <div class="container text-center mt-2">
+        <h1 class="mb-2"><u>Sorting Visualizer</u></h1>
+
+        <div class="mx-auto">
+            <div class="row gx-2 gy-2 mb-2 align-items-center">
+
+                <div class="col-md">
+                    <label>Speed</label>
+                    <input id="speed" class="form-range" type="range" min="1" max="1000" value="50"
+                        style="direction: rtl">
+                </div>
+
+                <div class="col-md">
+                    <div class="form-floating">
+                        <select id="algorithm" class="form-select">
+                            <option value="0">Quicksort</option>
+                            <option value="1">Bubblesort</option>
+                        </select>
+                        <label>Algorithm</label>
+                    </div>
+                </div>
+
+                <div class="col-md">
+                    <div class="form-floating">
+                        <input id="size" class="form-control" type="number" value="200" placeholder="Array size">
+                        <label>Array size</label>
+                    </div>
+                </div>
+
+                <div class="col-md">
+                    <button id="generate" class="btn btn-secondary w-100" onclick="generate()">New random array</button>
+                </div>
+
+                <div class="col-md">
+                    <button id="start" class="btn btn-success w-100" onclick="start()" data-bs-toggle="tooltip"
+                        data-bs-placement="top" title="Shuffles the array">Sort</button>
+                </div>
+            </div>
+        </div>
+        <canvas id="canvas" class="border" height="600" width="1000"></canvas>
+    </div>
+
+    <script>
+        const ctx = canvas.getContext("2d")
+        var MAX = -1;
+        var running = false
+        generate()
+        toggleUI()
+
+        async function quickSort(arr, lo, hi) {
+            if (lo < hi) {
+                let pivotIndex = await partition(arr, lo, hi)
+                await quickSort(arr, lo, pivotIndex - 1)
+                await quickSort(arr, pivotIndex + 1, hi)
+            }
+        }
+
+        async function partition(arr, lo, hi) {
+            let i = lo
+            let j = hi - 1
+            let randomIndex = Math.floor(Math.random() * (hi - lo + 1)) + lo
+
+            drawBar(arr, randomIndex, 'blue')
+            await sleep()
+
+            swap(arr, randomIndex, hi)
+            let pivot = arr[hi]
+
+            while (i < j) {
+                while (i < j && arr[i] <= pivot) i++;
+                while (j > i && arr[j] > pivot) j--;
+                if (arr[i] > arr[j]) await swap(arr, i, j)
+            }
+
+            if (arr[i] > pivot) {
+                await swap(arr, i, hi)
+            } else {
+                i = hi
+            }
+
+            return i
+        }
+
+        async function swap(arr, i, j) {
+            const tmp = arr[i]
+            arr[i] = arr[j]
+            arr[j] = tmp
+
+            await drawBar(arr, i, 'red')
+            await drawBar(arr, j, 'red')
+            await sleep()
+            await drawBar(arr, i, 'white')
+            await drawBar(arr, j, 'white')
+        }
+
+        async function bubbleSort(arr) {
+            for (var i = 0; i < arr.length; i++) {
+                for (var j = 0; j < (arr.length - i - 1); j++) {
+                    if (arr[j] > arr[j + 1]) {
+                        await swap(arr, j, j + 1)
+                    }
+                }
+                drawBar(arr, arr.length - i - 1, 'blue')
+            }
+        }
+
+        async function generate() {
+            ARR = Array.from(
+                { length: Math.min(1000, Math.max(size.value, 2)) },
+                () => Math.floor(Math.random() * (2000 + 1)) + 2
+            );
+            size.value = ARR.length
+            MAX = Math.max(...ARR);
+            await drawArr(ARR)
+        }
+
+        async function start() {
+            running = true
+            toggleUI()
+            shuffle(ARR)
+            await drawArr(ARR)
+            switch (algorithm.value) {
+                case '0':
+                    await quickSort(ARR, 0, ARR.length - 1)
+                    break;
+                case '1':
+                    await bubbleSort(ARR)
+                    break;
+            }
+            running = false
+            toggleUI()
+            drawArr(ARR)
+        }
+
+        function stop() {
+            running = false
+            toggleUI()
+        }
+
+        function toggleUI() {
+            document.querySelector("#start").disabled = running
+            document.querySelector("#size").disabled = running
+            document.querySelector("#generate").disabled = running
+        }
+
+        function shuffle(arr) {
+            currentIndex = arr.length
+            while (currentIndex != 0) {
+                randomIndex = Math.floor(Math.random() * currentIndex)
+                currentIndex--
+                [arr[currentIndex], arr[randomIndex]] =
+                    [arr[randomIndex], arr[currentIndex]]
+            }
+        }
+
+        async function drawArr(arr) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height)
+            for (i = 0; i < arr.length; i++) {
+                drawBar(arr, i, 'white')
+            }
+        }
+
+        function drawBar(arr, i, color) {
+            barWidth = Math.round(canvas.width / arr.length)
+            margin = Math.round((canvas.width - barWidth * arr.length) / 2)
+            height = canvas.height * (arr[i] / MAX)
+            ctx.fillStyle = color
+            ctx.clearRect(i * (barWidth) + margin, 0, barWidth, canvas.height)
+            ctx.fillRect(i * (barWidth) + margin, canvas.height - height, barWidth, height);
+        }
+
+        function sleep() {
+            return new Promise(resolve => setTimeout(resolve, speed.value / 10));
+        }
+    </script>
+</body>
+
+</html>
